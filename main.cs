@@ -114,32 +114,26 @@ namespace Picture
         }
         static class Console
         {
+            struct ConsoleText
+            {
+                public required string Text;
+                public ConsoleColor? Color; 
+            }
+            static Queue<ConsoleText> OutQueue = new();
             public static void WriteLine()
             {
                 System.Console.WriteLine();
             }
-            public static void WriteLine(string Text)
+            public static void WriteLine(string text)
             {
-                if(Text.Contains("[Finished]"))
-                {
-                    System.Console.ForegroundColor = ConsoleColor.Green;
-                    System.Console.WriteLine(Text);
-                    System.Console.ResetColor();
-                }
-                else if(Text.Contains("[ERROR]"))
-                {
-                    System.Console.ForegroundColor = ConsoleColor.Red;
-                    System.Console.WriteLine(Text);
-                    System.Console.ResetColor();
-                }
-                else if(Text.Contains("[Debug]"))
-                {
-                    System.Console.ForegroundColor = ConsoleColor.Yellow;
-                    System.Console.WriteLine(Text);
-                    System.Console.ResetColor();
-                }
+                if(text.Contains("[Finished]"))
+                    OutQueue.Enqueue(new ConsoleText(){ Text = text,Color = ConsoleColor.Green});
+                else if(text.Contains("[ERROR]"))
+                    OutQueue.Enqueue(new ConsoleText(){ Text = text,Color = ConsoleColor.Red});
+                else if(text.Contains("[Debug]"))
+                    OutQueue.Enqueue(new ConsoleText(){ Text = text,Color = ConsoleColor.Yellow});
                 else
-                    System.Console.WriteLine(Text);
+                    OutQueue.Enqueue(new ConsoleText(){ Text = text,Color = null});
 
             }
             public static TextWriter Out
@@ -157,6 +151,21 @@ namespace Picture
             {
                 return System.Console.ReadKey();
             }
+            public static void Start()
+            {
+                while(true)
+                {
+                    if(OutQueue.Count != 0)
+                    {
+                        var text = OutQueue.Dequeue();
+                        if(text.Color != null)
+                            System.Console.ForegroundColor = (ConsoleColor)text.Color;
+                        System.Console.WriteLine(text.Text);
+                        System.Console.ResetColor();
+                    }
+                }
+
+            }
         }
         static void Logo()
         {
@@ -173,7 +182,7 @@ namespace Picture
         {
             try
             {
-                Console.Out.WriteLineAsync("[INFO]正在检查更新...");
+                Console.WriteLine("[INFO]正在检查更新...");
                 var Client = new HttpClient();
                 Client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
                 var GetTask = Client.GetStringAsync("https://api.github.com/repos/XiaoSong0919/PictureManager/releases/latest");
@@ -267,30 +276,29 @@ namespace Picture
                     MultiThreading = true;
                     break;
             }
-            Console.Out.WriteLineAsync($"[INFO]MultiThreading:{MultiThreading}");
-            Console.Out.WriteLineAsync("[INFO]请输入目标路径:");
+            Console.WriteLine($"[INFO]MultiThreading:{MultiThreading}");
+            Console.WriteLine("[INFO]请输入目标路径:");
             InputPath = Console.ReadLine();
             while(!Directory.Exists(InputPath))
             {
                 Console.WriteLine("[ERROR]目标路径不存在，请重新输入:");
                 InputPath = Console.ReadLine();
             }
-            Console.Out.WriteLineAsync($"目标路径:{InputPath}");
-            Console.Out.WriteLineAsync("[INFO]请输入输出路径:");
+            Console.WriteLine($"目标路径:{InputPath}");
+            Console.WriteLine("[INFO]请输入输出路径:");
             OutputPath = Console.ReadLine();
             while (!Directory.Exists(OutputPath))
             {
                 Console.WriteLine("[ERROR]此路径不存在，请重新输入:");
                 OutputPath = Console.ReadLine();
             }
-            Console.Out.WriteLineAsync($"输出路径:{OutputPath}");
-            Console.Out.WriteLineAsync($"[INFO]正在读取Config...");
+            Console.WriteLine($"输出路径:{OutputPath}");
+            Console.WriteLine($"[INFO]正在读取Config...");
             ReadConfig();
-            Console.Out.WriteLineAsync($"[INFO]开始整理...");
-            ScanFileTimer.Interval = 600;
-            ScanFileTimer.Elapsed += DiscoverNewFile();            
-            ScanFileTimer.Enabled = true;
-            Console.Out.WriteLineAsync("[INFO]Standby");
+            Console.WriteLine($"[INFO]开始整理...");
+            Task.Run(() => DiscoverNewFile());
+            Console.Start();
+            Console.WriteLine("[INFO]Standby");
             //while(true)
             //    Console.ReadKey();
 
@@ -299,7 +307,7 @@ namespace Picture
 
         static void FileHandle()
         {
-            Console.Out.WriteLineAsync("[INFO]准备开始整理Picture...");
+            Console.WriteLine("[INFO]准备开始整理Picture...");
             Thread.Sleep(3000);
             //int PictureCount = 0;
             //////////////////////////////////////////////////////////////////
@@ -344,14 +352,14 @@ namespace Picture
                     PTemporaryList.Add(FileNewPath,tmpdata);
                     FileReader.Close();
                     File.Delete(FileNewPath);
-                    Console.Out.WriteLineAsync($"[INFO]已缓存冲突[Picture]");
+                    Console.WriteLine($"[INFO]已缓存冲突[Picture]");
 
                 }
                 if(!PTemporaryList.ContainsKey(FilePath))//文件没有被缓存
                 {
                     File.Move(FilePath, FileNewPath);
                     PictureList.Remove(Picture);
-                    Console.Out.WriteLineAsync($"[INFO]已处理[Picture],新位置在\"{FileNewPath}\"");
+                    Console.WriteLine($"[INFO]已处理[Picture],新位置在\"{FileNewPath}\"");
                 }
                 else
                 {
@@ -369,7 +377,7 @@ namespace Picture
                     NewInfo.CreationTimeUtc = RawInfo.CreationTimeUtc;
                     NewInfo.LastAccessTimeUtc = RawInfo.LastAccessTimeUtc;
                     NewInfo.LastWriteTimeUtc = RawInfo.LastWriteTimeUtc;
-                    Console.Out.WriteLineAsync($"[INFO]已处理[Picture],新位置在\"{FileNewPath}\"");
+                    Console.WriteLine($"[INFO]已处理[Picture],新位置在\"{FileNewPath}\"");
                     PictureList.Remove(Picture);
                 }
 
@@ -379,7 +387,7 @@ namespace Picture
             //////                                  Raw处理
             //////////////////////////////////////////////////////////////////
             //int RawCount = 0;
-            Console.Out.WriteLineAsync("[INFO]准备开始整理Raw...");
+            Console.WriteLine("[INFO]准备开始整理Raw...");
             Thread.Sleep(3000);
             Dictionary<long, FileInfo> RawIndex = new();
             RawList.ForEach(Raw =>
@@ -420,14 +428,14 @@ namespace Picture
                     RTemporaryList.Add(FileNewPath, tmpdata);
                     FileReader.Close(); 
                     File.Delete(FileNewPath);
-                    Console.Out.WriteLineAsync($"[INFO]已缓存冲突[Raw]");
+                    Console.WriteLine($"[INFO]已缓存冲突[Raw]");
 
                 }
                 if (!RTemporaryList.ContainsKey(FilePath))//文件没有被缓存
                 {
                     File.Move(FilePath, FileNewPath);
                     RawList.Remove(Raw);
-                    Console.Out.WriteLineAsync($"[INFO]已处理[Raw],新位置在\"{FileNewPath}\"");
+                    Console.WriteLine($"[INFO]已处理[Raw],新位置在\"{FileNewPath}\"");
                 }
                 else
                 {
@@ -445,7 +453,7 @@ namespace Picture
                     NewInfo.CreationTimeUtc = RawInfo.CreationTimeUtc;
                     NewInfo.LastAccessTimeUtc = RawInfo.LastAccessTimeUtc;
                     NewInfo.LastWriteTimeUtc = RawInfo.LastWriteTimeUtc;
-                    Console.Out.WriteLineAsync($"[INFO]已处理[Raw],新位置在\"{FileNewPath}\"");
+                    Console.WriteLine($"[INFO]已处理[Raw],新位置在\"{FileNewPath}\"");
                     RawList.Remove(Raw);
                 }
             });
@@ -519,13 +527,13 @@ namespace Picture
                         {
                             FileInfoList.Add(file);
                             PictureHashList.Add(FileHash);
-                            Console.Out.WriteLineAsync($"[INFO]发现Picture:{file.Name}");
+                            Console.WriteLine($"[INFO]发现Picture:{file.Name}");
                         }
                         else if (!RawHashList.Contains(FileHash) && RawExtension.Contains(file.Extension.ToLower()))//已扫描Raw
                         {
                             FileInfoList.Add(file);
                             RawHashList.Add(FileHash);
-                            Console.Out.WriteLineAsync($"[INFO]发现Raw:{file.Name}");
+                            Console.WriteLine($"[INFO]发现Raw:{file.Name}");
                         }
 #if DEBUG
                         else
@@ -545,13 +553,13 @@ namespace Picture
                     {
                         FileInfoList.Add(file);
                         PictureHashList.Add(FileHash);
-                        Console.Out.WriteLineAsync($"[INFO]发现Picture:{file.Name}");
+                        Console.WriteLine($"[INFO]发现Picture:{file.Name}");
                     }
                     else if (!RawHashList.Contains(FileHash) && RawExtension.Contains(file.Extension.ToLower()))//已扫描Raw
                     {
                         FileInfoList.Add(file);
                         RawHashList.Add(FileHash);
-                        Console.Out.WriteLineAsync($"[INFO]发现Raw:{file.Name}");
+                        Console.WriteLine($"[INFO]发现Raw:{file.Name}");
                     }
 
                     else
@@ -604,15 +612,15 @@ namespace Picture
                 }
             }
             Console.WriteLine("[Finished]扫描完毕");
-            Console.Out.WriteLineAsync($"[INFO]共发现[Picture]:{PictureCount}");
-            Console.Out.WriteLineAsync($"[INFO]共发现[Raw]:{RawCount}");
+            Console.WriteLine($"[INFO]共发现[Picture]:{PictureCount}");
+            Console.WriteLine($"[INFO]共发现[Raw]:{RawCount}");
             
             FileHandle();
             return null;
         }
         static void SetConfig()
         {
-            Console.Out.WriteLineAsync("[INFO]正在写入Config...");
+            Console.WriteLine("[INFO]正在写入Config...");
             string ConfigPath = $"{OutputPath}/PictureManager.config";
             string ConfigContent = null;
             ConfigContent += "[PictureHashList]\n";
@@ -678,7 +686,7 @@ namespace Picture
                     }
 
                 }
-                Console.Out.WriteLineAsync($"[INFO]Config读取完毕");
+                Console.WriteLine($"[INFO]Config读取完毕");
                 Thread.Sleep(1000);
 
             }
