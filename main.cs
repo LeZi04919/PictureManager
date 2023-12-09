@@ -105,7 +105,6 @@ namespace Picture
         static List<string> RawHashList = new();//Raw Hash列表
         static string InputPath;
         static string OutputPath;
-        static System.Timers.Timer ScanFileTimer = new();
         static string Version = "1.1.13";
         struct TemporaryData
         {
@@ -214,7 +213,7 @@ namespace Picture
         }
         static void Update()
         {
-            var API_Url = "https://api.github.com/repos/XiaoSong0919/PictureManager/releases/latest";
+            var API_Url = "https://api.github.com/repos/LeZi9916/PictureManager/releases/latest";
             var DLClient = new HttpClient();
             DLClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
             var GetTask = DLClient.GetStringAsync(API_Url);
@@ -300,7 +299,7 @@ namespace Picture
             Console.Start();
             Console.WriteLine("[INFO]Standby");
             //while(true)
-            //    Console.ReadKey();
+            //    Console.ReadKey(); 
 
 
         }      
@@ -581,7 +580,7 @@ namespace Picture
 
 
         }
-        static ElapsedEventHandler DiscoverNewFile()
+        static void DiscoverNewFile()
         {
             var NewFileList = ScanDirectory(InputPath);
             Directory.CreateDirectory($"{OutputPath}/Picture/");
@@ -616,7 +615,6 @@ namespace Picture
             Console.WriteLine($"[INFO]共发现[Raw]:{RawCount}");
             
             FileHandle();
-            return null;
         }
         static void SetConfig()
         {
